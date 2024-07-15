@@ -1,0 +1,41 @@
+using System;
+using System.Text.RegularExpressions;
+
+public class Validator
+{
+    // Regular expression for a valid domain name
+    private static readonly Regex DomainNameRegex = new Regex(@"^([a-zA-Z0-9]+(-[a-zA-Z0-9]+)*\.)+[a-zA-Z]{2,}$");
+
+    // Regular expression for a valid IP address (IPv4)
+    private static readonly Regex IpAddressRegex = new Regex(@"^(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])(\.(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])){3}$");
+
+    public static bool IsValidDomainName(string domainName)
+    {
+        if (string.IsNullOrWhiteSpace(domainName))
+        {
+            return false;
+        }
+        return DomainNameRegex.IsMatch(domainName);
+    }
+
+    public static bool IsValidIpAddress(string ipAddress)
+    {
+        if (string.IsNullOrWhiteSpace(ipAddress))
+        {
+            return false;
+        }
+        return IpAddressRegex.IsMatch(ipAddress);
+    }
+}
+
+class Program
+{
+    static void Main()
+    {
+        string domainName = "example.com";
+        string ipAddress = "192.168.1.1";
+
+        Console.WriteLine($"Is '{domainName}' a valid domain name? {Validator.IsValidDomainName(domainName)}");
+        Console.WriteLine($"Is '{ipAddress}' a valid IP address? {Validator.IsValidIpAddress(ipAddress)}");
+    }
+}
