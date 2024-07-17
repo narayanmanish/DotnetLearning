@@ -1,3 +1,10 @@
+
+
+  // looking for a specific user
+        searcher.Filter = $"(&(objectCategory=person)(objectClass=user)(sAMAccountName={username}))";
+     
+
+
 using System;
 using System.DirectoryServices;
 
