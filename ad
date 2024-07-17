@@ -1,4 +1,16 @@
+DirectoryEntry searchRoot = new DirectoryEntry("LDAP://corp.com/DC=corp,DC=com", @"corp\administrator", "password");
+            DirectorySearcher searcher = new DirectorySearcher(searchRoot, "(&(objectClass=user)(objectCategory=person))");
+            searcher.PropertiesToLoad.Add("name");
+            searcher.SearchScope = SearchScope.Subtree;
+         
+            searcher.PageSize = 1000; // Setting the PageSize value to 1000 will return all objects.
 
+            SearchResultCollection results = searcher.FindAll();
+
+            foreach (SearchResult item in results)
+            {
+                comboBox1.Items.Add(Convert.ToString(item.Properties["name"][0]));
+            }
 
   // looking for a specific user
         searcher.Filter = $"(&(objectCategory=person)(objectClass=user)(sAMAccountName={username}))";
