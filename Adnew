@@ -25,24 +25,35 @@ namespace ADUsers
             DirectorySearcher searcher = new DirectorySearcher(entry)
             {
                 Filter = "(&(objectCategory=person)(objectClass=user))",
-                PageSize = 1000
+                PageSize = 1000,
+                PropertiesToLoad = { "sAMAccountName" }
             };
 
             try
             {
                 SearchResultCollection results;
+                searcher.PropertiesToLoad.Add("sAMAccountName");
+
                 do
                 {
                     results = searcher.FindAll();
+
                     foreach (SearchResult result in results)
                     {
                         DirectoryEntry user = result.GetDirectoryEntry();
-                        users.Add(user.Properties["sAMAccountName"].Value.ToString());
+                        if (user.Properties["sAMAccountName"].Value != null)
+                        {
+                            users.Add(user.Properties["sAMAccountName"].Value.ToString());
+                        }
                     }
 
-                    // Move to the next page of results
-                    searcher.DirectorySynchronization = new DirectorySynchronization();
-                } while (results.Count != 0);
+                    // Get the cookie and set it for the next page
+                    byte[] pageCookie = searcher.PageSize > 0 ? searcher.GetCurrentPageCookie() : null;
+                    if (pageCookie != null)
+                    {
+                        searcher.SetCurrentPageCookie(pageCookie);
+                    }
+                } while (results.Count > 0);
             }
             catch (Exception ex)
             {
