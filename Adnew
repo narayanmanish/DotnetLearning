@@ -1,3 +1,96 @@
+
+
+using System;
+using System.Collections.Generic;
+using System.DirectoryServices;
+
+namespace ADUsers
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            string domainPath = "LDAP://YourDomain"; // Replace with your domain
+            List<string> allUsers = GetAllUsers(domainPath);
+
+            foreach (var user in allUsers)
+            {
+                Console.WriteLine(user);
+            }
+        }
+
+        static List<string> GetAllUsers(string domainPath)
+        {
+            List<string> users = new List<string>();
+
+            DirectoryEntry entry = new DirectoryEntry(domainPath);
+            DirectorySearcher searcher = new DirectorySearcher(entry)
+            {
+                Filter = "(&(objectCategory=person)(objectClass=user))",
+                PageSize = 1000, // Enable paging
+                PropertiesToLoad = { "sAMAccountName" }
+            };
+
+            SearchResultCollection results;
+            searcher.SearchScope = SearchScope.Subtree;
+
+            try
+            {
+                do
+                {
+                    results = searcher.FindAll();
+                    foreach (SearchResult result in results)
+                    {
+                        DirectoryEntry user = result.GetDirectoryEntry();
+                        if (user.Properties["sAMAccountName"].Value != null)
+                        {
+                            users.Add(user.Properties["sAMAccountName"].Value.ToString());
+                        }
+                    }
+
+                    // Update the cookie for the next page
+                    if (results.Count > 0)
+                    {
+                        foreach (byte[] cookie in results.GetCookie())
+                        {
+                            searcher.Cookie = cookie;
+                        }
+                    }
+                } while (results.Count > 0 && searcher.Cookie.Length > 0);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"An error occurred: {ex.Message}");
+            }
+
+            return users;
+        }
+    }
+
+    public static class SearchResultCollectionExtensions
+    {
+        public static List<byte[]> GetCookie(this SearchResultCollection results)
+        {
+            List<byte[]> cookies = new List<byte[]>();
+
+            foreach (SearchResult result in results)
+            {
+                if (result.Properties.Contains("cookie"))
+                {
+                    foreach (object cookie in result.Properties["cookie"])
+                    {
+                        cookies.Add((byte[])cookie);
+                    }
+                }
+            }
+
+            return cookies;
+        }
+    }
+}
+
+
+
 using System;
 using System.Collections.Generic;
 using System.DirectoryServices;
