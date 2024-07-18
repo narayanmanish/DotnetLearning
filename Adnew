@@ -1,0 +1,55 @@
+using System;
+using System.Collections.Generic;
+using System.DirectoryServices;
+
+namespace ADUsers
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            string domainPath = "LDAP://YourDomain"; // Replace with your domain
+            List<string> allUsers = GetAllUsers(domainPath);
+
+            foreach (var user in allUsers)
+            {
+                Console.WriteLine(user);
+            }
+        }
+
+        static List<string> GetAllUsers(string domainPath)
+        {
+            List<string> users = new List<string>();
+
+            DirectoryEntry entry = new DirectoryEntry(domainPath);
+            DirectorySearcher searcher = new DirectorySearcher(entry)
+            {
+                Filter = "(&(objectCategory=person)(objectClass=user))",
+                PageSize = 1000
+            };
+
+            try
+            {
+                SearchResultCollection results;
+                do
+                {
+                    results = searcher.FindAll();
+                    foreach (SearchResult result in results)
+                    {
+                        DirectoryEntry user = result.GetDirectoryEntry();
+                        users.Add(user.Properties["sAMAccountName"].Value.ToString());
+                    }
+
+                    // Move to the next page of results
+                    searcher.DirectorySynchronization = new DirectorySynchronization();
+                } while (results.Count != 0);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"An error occurred: {ex.Message}");
+            }
+
+            return users;
+        }
+    }
+}
