@@ -1,5 +1,83 @@
 using System;
 using System.Collections.Generic;
+using System.DirectoryServices.AccountManagement;
+
+public class ActiveDirectoryService
+{
+    private readonly string _domainName;
+    private readonly string _container;
+
+    public ActiveDirectoryService(string domainName, string container)
+    {
+        _domainName = domainName;
+        _container = container;
+    }
+
+    public List<UserPrincipal> GetInactiveUsers(int days)
+    {
+        DateTime cutoffDate = DateTime.Now.AddDays(-days);
+        List<UserPrincipal> inactiveUsers = new List<UserPrincipal>();
+
+        using (var context = new PrincipalContext(ContextType.Domain, _domainName, _container))
+        {
+            using (var searcher = new PrincipalSearcher(new UserPrincipal(context)))
+            {
+                foreach (var result in searcher.FindAll())
+                {
+                    var user = result as UserPrincipal;
+                    if (user != null)
+                    {
+                        DateTime? lastLogon = GetLastLogon(user);
+
+                        if (lastLogon == null || lastLogon < cutoffDate)
+                        {
+                            inactiveUsers.Add(user);
+                        }
+                    }
+                }
+            }
+        }
+
+        return inactiveUsers;
+    }
+
+    private DateTime? GetLastLogon(UserPrincipal user)
+    {
+        var directoryEntry = (DirectoryEntry)user.GetUnderlyingObject();
+        if (directoryEntry.Properties["lastLogon"].Value != null)
+        {
+            var lastLogon = (long)directoryEntry.Properties["lastLogon"].Value;
+            return DateTime.FromFileTime(lastLogon);
+        }
+
+        return null;
+    }
+}
+
+class Program
+{
+    static void Main(string[] args)
+    {
+        string domainName = "yourdomain.com";
+        string container = "OU=Users,DC=yourdomain,DC=com"; // Adjust this to your AD container
+
+        var adService = new ActiveDirectoryService(domainName, container);
+        int days = 30; // Example: users inactive for the last 30 days
+        List<UserPrincipal> inactiveUsers = adService.GetInactiveUsers(days);
+
+        foreach (var user in inactiveUsers)
+        {
+            Console.WriteLine($"User {user.SamAccountName} is inactive.");
+        }
+    }
+}
+
+
+
+
+
+using System;
+using System.Collections.Generic;
 using System.DirectoryServices;
 using System.Globalization;
 
