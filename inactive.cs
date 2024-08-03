@@ -1,5 +1,95 @@
 using System;
 using System.Collections.Generic;
+using System.DirectoryServices.Protocols;
+using System.Net;
+using System.Security.Permissions;
+
+public class ActiveDirectoryService
+{
+    private readonly string _ldapPath;
+    private readonly string _username;
+    private readonly string _password;
+
+    public ActiveDirectoryService(string ldapPath, string username, string password)
+    {
+        _ldapPath = ldapPath;
+        _username = username;
+        _password = password;
+    }
+
+    public List<string> GetInactiveUsers(int days)
+    {
+        DateTime cutoffDate = DateTime.UtcNow.AddDays(-days);
+        List<string> inactiveUsers = new List<string>();
+
+        using (var connection = new LdapConnection(_ldapPath))
+        {
+            connection.Credential = new NetworkCredential(_username, _password);
+            connection.AuthType = AuthType.Basic;
+
+            string searchFilter = "(&(objectCategory=person)(objectClass=user)(lastLogonTimestamp<=*))";
+            var request = new SearchRequest("DC=yourdomain,DC=com", searchFilter, SearchScope.Subtree, "sAMAccountName", "lastLogonTimestamp");
+
+            var response = (SearchResponse)connection.SendRequest(request);
+
+            foreach (SearchResultEntry entry in response.Entries)
+            {
+                DateTime? lastLogon = GetLastLogonTimestamp(entry);
+
+                if (lastLogon == null || lastLogon < cutoffDate)
+                {
+                    inactiveUsers.Add(entry.Attributes["sAMAccountName"][0].ToString());
+                }
+            }
+        }
+
+        return inactiveUsers;
+    }
+
+    private DateTime? GetLastLogonTimestamp(SearchResultEntry user)
+    {
+        try
+        {
+            if (user.Attributes["lastLogonTimestamp"] != null)
+            {
+                long lastLogonTimestamp = (long)user.Attributes["lastLogonTimestamp"][0];
+                return DateTime.FromFileTimeUtc(lastLogonTimestamp);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error reading lastLogonTimestamp for user: {user.DistinguishedName}. Exception: {ex.Message}");
+        }
+
+        return null;
+    }
+}
+
+class Program
+{
+    static void Main(string[] args)
+    {
+        string ldapPath = "yourdomain.com"; // Adjust this to your AD domain
+        string username = "yourUsername"; // Your AD username
+        string password = "yourPassword"; // Your AD password
+
+        var adService = new ActiveDirectoryService(ldapPath, username, password);
+        int days = 30; // Example: users inactive for the last 30 days
+        List<string> inactiveUsers = adService.GetInactiveUsers(days);
+
+        foreach (var user in inactiveUsers)
+        {
+            Console.WriteLine($"User {user} is inactive.");
+        }
+
+        Console.WriteLine($"Total number of inactive users: {inactiveUsers.Count}");
+    }
+}
+
+
+
+using System;
+using System.Collections.Generic;
 using System.DirectoryServices;
 
 public class ActiveDirectoryService
