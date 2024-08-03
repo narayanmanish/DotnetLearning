@@ -1,5 +1,73 @@
 using System;
 using System.Collections.Generic;
+using System.DirectoryServices;
+
+public class ActiveDirectoryService
+{
+    private readonly string _ldapPath;
+
+    public ActiveDirectoryService(string ldapPath)
+    {
+        _ldapPath = ldapPath;
+    }
+
+    public List<DirectoryEntry> GetInactiveUsers(int days)
+    {
+        DateTime cutoffDate = DateTime.Now.AddDays(-days);
+        List<DirectoryEntry> inactiveUsers = new List<DirectoryEntry>();
+
+        using (var rootEntry = new DirectoryEntry(_ldapPath))
+        {
+            foreach (DirectoryEntry user in rootEntry.Children)
+            {
+                if (user.SchemaClassName == "user")
+                {
+                    DateTime? lastLogon = GetLastLogonTimestamp(user);
+
+                    if (lastLogon == null || lastLogon < cutoffDate)
+                    {
+                        inactiveUsers.Add(user);
+                    }
+                }
+            }
+        }
+
+        return inactiveUsers;
+    }
+
+    private DateTime? GetLastLogonTimestamp(DirectoryEntry user)
+    {
+        if (user.Properties["lastLogonTimestamp"].Value != null)
+        {
+            var lastLogonTimestamp = (long)user.Properties["lastLogonTimestamp"].Value;
+            return DateTime.FromFileTime(lastLogonTimestamp);
+        }
+
+        return null;
+    }
+}
+
+class Program
+{
+    static void Main(string[] args)
+    {
+        string ldapPath = "LDAP://CN=Users,DC=yourdomain,DC=com"; // Adjust this to your AD path
+
+        var adService = new ActiveDirectoryService(ldapPath);
+        int days = 30; // Example: users inactive for the last 30 days
+        List<DirectoryEntry> inactiveUsers = adService.GetInactiveUsers(days);
+
+        foreach (var user in inactiveUsers)
+        {
+            Console.WriteLine($"User {user.Properties["sAMAccountName"].Value} is inactive.");
+        }
+    }
+}
+
+
+
+using System;
+using System.Collections.Generic;
 using System.DirectoryServices.AccountManagement;
 
 public class ActiveDirectoryService
