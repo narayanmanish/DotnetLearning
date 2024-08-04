@@ -104,3 +104,268 @@ class OperationResult
     public string Status { get; set; }
     public string Message { get; set; }
 }
+
+
+
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Threading.Tasks;
+
+class Program
+{
+    static void Main()
+    {
+        // Example dictionary of shares and associated user SIDs
+        var sharesAndUsers = new Dictionary<string, List<string>>
+        {
+            { @"C:\path\to\share1", new List<string> { "S-1-5-21-3623811015-3361044348-30300820-1013", "S-1-5-21-3623811015-3361044348-30300820-1014" } },
+            { @"C:\path\to\share2", new List<string> { "S-1-5-21-3623811015-3361044348-30300820-1015", "S-1-5-21-3623811015-3361044348-30300820-1016" } }
+        };
+
+        // List to hold results
+        List<OperationResult> results = new List<OperationResult>();
+
+        // Process each share and its users
+        foreach (var share in sharesAndUsers)
+        {
+            ProcessShareAndUsersInParallel(share.Key, share.Value, results);
+        }
+
+        // Output results
+        Console.WriteLine("Operation Results:");
+        foreach (var result in results)
+        {
+            Console.WriteLine($"Share: {result.Share}, SID: {result.SID}, Status: {result.Status}, Message: {result.Message}");
+        }
+    }
+
+    static void ProcessShareAndUsersInParallel(string sharePath, List<string> sids, List<OperationResult> results)
+    {
+        int maxDegreeOfParallelism = 10; // Adjust based on your system's capabilities
+
+        Parallel.ForEach(sids, new ParallelOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism }, sid =>
+        {
+            var result = DenyUserPermission(sharePath, sid);
+            lock (results)
+            {
+                results.Add(result);
+            }
+        });
+    }
+
+    static OperationResult DenyUserPermission(string sharePath, string sid)
+    {
+        try
+        {
+            ProcessStartInfo processStartInfo = new ProcessStartInfo
+            {
+                FileName = "icacls.exe",
+                Arguments = $"\"{sharePath}\" /deny {sid}:(F)",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+
+            using (Process process = new Process())
+            {
+                process.StartInfo = processStartInfo;
+                process.Start();
+
+                string output = process.StandardOutput.ReadToEnd();
+                string error = process.StandardError.ReadToEnd();
+                process.WaitForExit();
+
+                if (process.ExitCode == 0)
+                {
+                    return new OperationResult
+                    {
+                        Share = sharePath,
+                        SID = sid,
+                        Status = "Success",
+                        Message = $"Successfully denied permissions for SID: {sid} on {sharePath}"
+                    };
+                }
+                else
+                {
+                    return new OperationResult
+                    {
+                        Share = sharePath,
+                        SID = sid,
+                        Status = "Failure",
+                        Message = $"Error denying permissions for SID: {sid} on {sharePath}. Error: {error}"
+                    };
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            return new OperationResult
+            {
+                Share = sharePath,
+                SID = sid,
+                Status = "Failure",
+                Message = $"Exception occurred while processing SID: {sid} on {sharePath}. Exception: {ex.Message}"
+            };
+        }
+    }
+}
+
+class OperationResult
+{
+    public string Share { get; set; }
+    public string SID { get; set; }
+    public string Status { get; set; }
+    public string Message { get; set; }
+}
+
+
+
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Threading.Tasks;
+
+class Program
+{
+    static void Main()
+    {
+        // Example dictionary of shares and associated user SIDs
+        var sharesAndUsers = new Dictionary<string, List<string>>
+        {
+            { @"C:\path\to\share1", new List<string> { "S-1-5-21-3623811015-3361044348-30300820-1013", "S-1-5-21-3623811015-3361044348-30300820-1014" } },
+            { @"C:\path\to\share2", new List<string> { "S-1-5-21-3623811015-3361044348-30300820-1015", "S-1-5-21-3623811015-3361044348-30300820-1016" } },
+            { @"C:\path\to\share1\subfolder", new List<string> { "S-1-5-21-3623811015-3361044348-30300820-1017" } }
+        };
+
+        // Normalize the share paths
+        var normalizedSharesAndUsers = NormalizeSharePaths(sharesAndUsers);
+
+        // List to hold results
+        List<OperationResult> results = new List<OperationResult>();
+
+        // Process each share and its users
+        foreach (var share in normalizedSharesAndUsers)
+        {
+            ProcessShareAndUsersInParallel(share.Key, share.Value, results);
+        }
+
+        // Output results
+        Console.WriteLine("Operation Results:");
+        foreach (var result in results)
+        {
+            Console.WriteLine($"Share: {result.Share}, SID: {result.SID}, Status: {result.Status}, Message: {result.Message}");
+        }
+    }
+
+    static Dictionary<string, List<string>> NormalizeSharePaths(Dictionary<string, List<string>> sharesAndUsers)
+    {
+        var normalizedSharesAndUsers = new Dictionary<string, List<string>>();
+
+        foreach (var share in sharesAndUsers)
+        {
+            string parentShare = share.Key;
+
+            // Check if the share path is a subdirectory of any existing share path
+            foreach (var existingShare in normalizedSharesAndUsers.Keys)
+            {
+                if (parentShare.StartsWith(existingShare))
+                {
+                    parentShare = existingShare;
+                    break;
+                }
+            }
+
+            // If the share path is not a subdirectory, add it as a new entry
+            if (!normalizedSharesAndUsers.ContainsKey(parentShare))
+            {
+                normalizedSharesAndUsers[parentShare] = new List<string>();
+            }
+
+            // Add the users to the normalized share path
+            normalizedSharesAndUsers[parentShare].AddRange(share.Value);
+        }
+
+        return normalizedSharesAndUsers;
+    }
+
+    static void ProcessShareAndUsersInParallel(string sharePath, List<string> sids, List<OperationResult> results)
+    {
+        int maxDegreeOfParallelism = 10; // Adjust based on your system's capabilities
+
+        Parallel.ForEach(sids, new ParallelOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism }, sid =>
+        {
+            var result = DenyUserPermission(sharePath, sid);
+            lock (results)
+            {
+                results.Add(result);
+            }
+        });
+    }
+
+    static OperationResult DenyUserPermission(string sharePath, string sid)
+    {
+        try
+        {
+            ProcessStartInfo processStartInfo = new ProcessStartInfo
+            {
+                FileName = "icacls.exe",
+                Arguments = $"\"{sharePath}\" /deny {sid}:(F)",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+
+            using (Process process = new Process())
+            {
+                process.StartInfo = processStartInfo;
+                process.Start();
+
+                string output = process.StandardOutput.ReadToEnd();
+                string error = process.StandardError.ReadToEnd();
+                process.WaitForExit();
+
+                if (process.ExitCode == 0)
+                {
+                    return new OperationResult
+                    {
+                        Share = sharePath,
+                        SID = sid,
+                        Status = "Success",
+                        Message = $"Successfully denied permissions for SID: {sid} on {sharePath}"
+                    };
+                }
+                else
+                {
+                    return new OperationResult
+                    {
+                        Share = sharePath,
+                        SID = sid,
+                        Status = "Failure",
+                        Message = $"Error denying permissions for SID: {sid} on {sharePath}. Error: {error}"
+                    };
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            return new OperationResult
+            {
+                Share = sharePath,
+                SID = sid,
+                Status = "Failure",
+                Message = $"Exception occurred while processing SID: {sid} on {sharePath}. Exception: {ex.Message}"
+            };
+        }
+    }
+}
+
+class OperationResult
+{
+    public string Share { get; set; }
+    public string SID { get; set; }
+    public string Status { get; set; }
+    public string Message { get; set; }
+}
