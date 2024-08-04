@@ -1,0 +1,106 @@
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Threading.Tasks;
+
+class Program
+{
+    static void Main()
+    {
+        // Example list of SIDs
+        List<string> sids = new List<string> 
+        { 
+            "S-1-5-21-3623811015-3361044348-30300820-1013", 
+            "S-1-5-21-3623811015-3361044348-30300820-1014" 
+        };
+        string filePath = @"C:\path\to\file_or_folder";
+
+        // List to hold results
+        List<OperationResult> results = new List<OperationResult>();
+
+        // Process the SIDs to deny permissions using multithreading
+        ProcessSidsInParallel(sids, filePath, results);
+
+        // Output results
+        Console.WriteLine("Operation Results:");
+        foreach (var result in results)
+        {
+            Console.WriteLine($"SID: {result.SID}, Status: {result.Status}, Message: {result.Message}");
+        }
+    }
+
+    static void ProcessSidsInParallel(List<string> sids, string filePath, List<OperationResult> results)
+    {
+        int maxDegreeOfParallelism = 10; // Adjust based on your system's capabilities
+
+        Parallel.ForEach(sids, new ParallelOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism }, sid =>
+        {
+            var result = DenyUserPermission(filePath, sid);
+            lock (results)
+            {
+                results.Add(result);
+            }
+        });
+    }
+
+    static OperationResult DenyUserPermission(string filePath, string sid)
+    {
+        try
+        {
+            ProcessStartInfo processStartInfo = new ProcessStartInfo
+            {
+                FileName = "icacls.exe",
+                Arguments = $"\"{filePath}\" /deny {sid}:(F)",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+
+            using (Process process = new Process())
+            {
+                process.StartInfo = processStartInfo;
+                process.Start();
+
+                string output = process.StandardOutput.ReadToEnd();
+                string error = process.StandardError.ReadToEnd();
+                process.WaitForExit();
+
+                if (process.ExitCode == 0)
+                {
+                    return new OperationResult
+                    {
+                        SID = sid,
+                        Status = "Success",
+                        Message = $"Successfully denied permissions for SID: {sid} on {filePath}"
+                    };
+                }
+                else
+                {
+                    return new OperationResult
+                    {
+                        SID = sid,
+                        Status = "Failure",
+                        Message = $"Error denying permissions for SID: {sid} on {filePath}. Error: {error}"
+                    };
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            return new OperationResult
+            {
+                SID = sid,
+                Status = "Failure",
+                Message = $"Exception occurred while processing SID: {sid}. Exception: {ex.Message}"
+            };
+        }
+    }
+}
+
+class OperationResult
+{
+    public string SID { get; set; }
+    public string Status { get; set; }
+    public string Message { get; set; }
+}
