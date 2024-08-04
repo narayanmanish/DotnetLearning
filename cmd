@@ -1,41 +1,71 @@
-# Define the remote domain controller and credentials
-$remoteDC = "remote.domain.controller"  # Replace with the remote domain controller's hostname
-$remoteDomain = "remote.domain"         # Replace with the remote domain
-$remoteUsername = "username"            # Replace with the username
-$remotePassword = "password"            # Replace with the password
+# Specify the LDAP path
+$ldapPath = "LDAP://DC=yourdomain,DC=com" # Adjust this to your AD path
 
-# Create a PSCredential object
-$secPassword = ConvertTo-SecureString $remotePassword -AsPlainText -Force
-$credential = New-Object System.Management.Automation.PSCredential ($remoteDomain + "\" + $remoteUsername, $secPassword)
+# Specify the credentials
+$username = "yourusername"
+$password = "yourpassword"
 
-# Create a new PowerShell session on the remote domain controller
-$session = New-PSSession -ComputerName $remoteDC -Credential $credential
+# Specify the number of inactive days
+$days = 30
 
-# Define the script block to run on the remote domain controller
-$scriptBlock = {
-    # Import the Active Directory module
-    Import-Module ActiveDirectory
+# Calculate the cutoff date
+$cutoffDate = (Get-Date).AddDays(-$days)
 
-    # Define the number of inactive days
-    $daysInactive = 30
+# Function to convert FileTime to DateTime
+function Convert-FileTimeToDateTime {
+    param (
+        [Parameter(Mandatory = $true)]
+        [long]$FileTime
+    )
 
-    # Calculate the date N days ago from today
-    $inactiveDate = (Get-Date).AddDays(-$daysInactive)
-
-    # Get all users who have not logged on since the inactive date and count them
-    $inactiveUserCount = Get-ADUser -Filter {lastLogonTimestamp -lt $inactiveDate} -Properties lastLogonTimestamp | 
-        Measure-Object | 
-        Select-Object -ExpandProperty Count
-
-    # Return the count of inactive users
-    return $inactiveUserCount
+    return [datetime]::FromFileTime($FileTime)
 }
 
-# Run the script block on the remote session and retrieve the result
-$inactiveUserCount = Invoke-Command -Session $session -ScriptBlock $scriptBlock
+# Function to search for inactive users
+function Search-InactiveUsers {
+    param (
+        [Parameter(Mandatory = $true)]
+        [ADSI]$Entry,
+        [Parameter(Mandatory = $true)]
+        [datetime]$CutoffDate,
+        [ref]$InactiveUsersCount
+    )
+
+    foreach ($child in $Entry.psbase.Children) {
+        try {
+            if ($child.SchemaClassName -eq "user") {
+                $lastLogonTimestamp = $null
+                if ($child.Properties["lastLogonTimestamp"].Count -gt 0) {
+                    $lastLogonTimestamp = Convert-FileTimeToDateTime -FileTime $child.Properties["lastLogonTimestamp"][0]
+                }
+
+                $whenChanged = $null
+                if ($child.Properties["whenChanged"].Count -gt 0) {
+                    $whenChanged = [datetime]::Parse($child.Properties["whenChanged"][0])
+                }
+
+                if (($lastLogonTimestamp -ne $null -and $lastLogonTimestamp -lt $CutoffDate) -or
+                    ($whenChanged -ne $null -and $whenChanged -lt $CutoffDate)) {
+                    $InactiveUsersCount.Value++
+                }
+            } elseif ($child.SchemaClassName -eq "organizationalUnit" -or $child.SchemaClassName -eq "container") {
+                # Recursive call for OUs and containers
+                Search-InactiveUsers -Entry ([ADSI]$child.psbase.Path) -CutoffDate $CutoffDate -InactiveUsersCount ([ref]$InactiveUsersCount.Value)
+            }
+        } catch {
+            Write-Host "Error accessing entry: $($child.psbase.Path). Exception: $($_.Exception.Message)"
+        }
+    }
+}
+
+# Create a DirectoryEntry object with credentials
+$rootEntry = New-Object DirectoryServices.DirectoryEntry($ldapPath, $username, $password)
+
+# Initialize inactive users count
+$inactiveUsersCount = 0
+
+# Search for inactive users
+Search-InactiveUsers -Entry $rootEntry -CutoffDate $cutoffDate -InactiveUsersCount ([ref]$inactiveUsersCount)
 
 # Output the count of inactive users
-Write-Output "Number of inactive users: $inactiveUserCount"
-
-# Close the remote session
-Remove-PSSession -Session $session
+Write-Output "Total inactive users found: $inactiveUsersCount"
