@@ -1,3 +1,49 @@
+using System;
+using System.Diagnostics;
+
+class Program
+{
+    static void Main(string[] args)
+    {
+        string username = "yourusername";
+        string password = "yourpassword";
+        string domain = "yourdomain";
+        int daysInactive = 30; // Example: users inactive for the last 30 days
+
+        string command = $@"
+            $SecurePassword = ConvertTo-SecureString '{password}' -AsPlainText -Force
+            $Credential = New-Object PSCredential('{username}', $SecurePassword)
+            $CutoffDate = (Get-Date).AddDays(-{daysInactive})
+            Get-ADUser -Filter * -Properties LastLogonTimestamp, LastLogon, pwdLastSet, whenChanged -Credential $Credential | Where-Object {
+                ($_.LastLogonTimestamp -eq $null -or [DateTime]::FromFileTime($_.LastLogonTimestamp) -lt $CutoffDate) -and
+                ($_.LastLogon -eq $null -or [DateTime]::FromFileTime($_.LastLogon) -lt $CutoffDate) -and
+                ($_.pwdLastSet -eq $null -or [DateTime]::FromFileTime($_.pwdLastSet) -lt $CutoffDate) -and
+                ($_.whenChanged -eq $null -or [DateTime]::Parse($_.whenChanged) -lt $CutoffDate)
+            } | Select-Object Name | Measure-Object | Select-Object -ExpandProperty Count
+        ";
+
+        string powershellCommand = $"powershell.exe -Command \"{command}\"";
+
+        ProcessStartInfo processInfo = new ProcessStartInfo("cmd.exe", $"/c {powershellCommand}")
+        {
+            RedirectStandardOutput = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+
+        using (Process process = Process.Start(processInfo))
+        using (System.IO.StreamReader reader = process.StandardOutput)
+        {
+            string result = reader.ReadToEnd();
+            Console.WriteLine($"Total inactive users found: {result}");
+        }
+    }
+}
+
+
+
+
+
 # Specify the LDAP path
 $ldapPath = "LDAP://DC=yourdomain,DC=com" # Adjust this to your AD path
 
