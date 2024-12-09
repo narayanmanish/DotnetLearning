@@ -1,0 +1,139 @@
+internal class Program
+{
+    
+    private static void Main(string[] args)
+    {
+        //int[] array = { 2,3,5 };
+        //var output = array.Missing();
+        //Console.WriteLine(string.Join(",", output));
+        //SingletonPattern employee =  SingletonPattern.GetInstance;
+        //employee.PrintDetails("employee");
+        //SingletonPattern student = SingletonPattern.GetInstance;
+        //employee.PrintDetails("student");
+
+        string input = "agettkgaeee";
+        string challengeToken = "4fneQrya9";
+        var res = token(input, challengeToken);
+        //string[] input = { "(1,1)", "(3,3)", "(2,0)" };
+        //DeetermineLine(input);
+    }
+
+    public static string token(string input,string challengeToken)
+    {
+        char firstNonRepeating = input.Where(ch => ch != ' ').GroupBy(ch => ch).
+            Where(x=>x.Count() == 1).Select(x=>x.Key).First();
+
+        string concatenated = firstNonRepeating + challengeToken;
+
+        string result = string.Concat(concatenated.Select((c, i) => (i + 1) % 4 == 0 ? '_' : c));
+
+        return result;  
+    }
+    public static string DeetermineLine(string[] input)
+    {
+        var p1 = Parse(input[0]);
+        var p2 = Parse(input[1]);
+        var p3 = Parse(input[2]);
+        // product = (x2−x1)⋅(y3−y1)−(y2−y1)⋅(x3−x1)
+        int product = (p2.Item1 - p1.Item1) * (p3.Item2 - p1.Item2) -
+                       (p2.Item2 - p1.Item2) * (p3.Item1 - p1.Item1);
+        if (product > 0)
+            return "left";
+        else if(product < 0) 
+            return "right";
+         else
+            return "nither";
+    }
+    public static (int,int) Parse(string input)
+    {
+        string value = input.Trim('(', ')');
+        string[] result = value.Split(',');
+        return (int.Parse(result[0]), int.Parse(result[1]));
+    }
+    static int ArrayChallenge(string[] strArr)
+    {
+        string targetWord = strArr[0];
+        string[] dictionary = strArr[1].Split(',');
+
+        int minRemovals = int.MaxValue;
+
+        foreach (string dictWord in dictionary)
+        {
+            // Skip words longer than the target word (no subsequence possible)
+            if (dictWord.Length > targetWord.Length) continue;
+
+            // Check if dictWord is a subsequence of targetWord
+            if (IsSubsequence(targetWord, dictWord))
+            {
+                // Calculate number of removals
+                int removals = targetWord.Length - dictWord.Length;
+                minRemovals = Math.Min(minRemovals, removals);
+
+                // Early exit if no removals needed
+                if (removals == 0) return 0;
+            }
+        }
+
+        // If no valid subsequence was found, return -1
+        return minRemovals == int.MaxValue ? -1 : minRemovals;
+    }
+
+    static bool IsSubsequence(string target, string word)
+    {
+        int tIndex = 0, wIndex = 0;
+
+        // Traverse through the target and dictionary word
+        while (tIndex < target.Length && wIndex < word.Length)
+        {
+            if (target[tIndex] == word[wIndex])
+                wIndex++; // Move to the next character in word
+            tIndex++;     // Always move to the next character in target
+        }
+
+        return wIndex == word.Length; // All characters in word are matched in order
+    }
+
+    static int ArrayChallenge(int[] arr)
+    {
+        if (arr.Length == 0)
+            return 0;
+
+        // Sort the array
+        Array.Sort(arr);
+
+        int longestStreak = 1; // At least one number is a subsequence
+        int currentStreak = 1;
+
+        // Traverse the sorted array to find the longest consecutive subsequence
+        for (int i = 1; i < arr.Length; i++)
+        {
+            if (arr[i] == arr[i - 1] + 1) // Consecutive numbers
+            {
+                currentStreak++;
+            }
+            else if (arr[i] != arr[i - 1]) // Reset streak if numbers are not consecutive
+            {
+                longestStreak = Math.Max(longestStreak, currentStreak);
+                currentStreak = 1; // Start a new streak
+            }
+        }
+
+        // Final check for the last streak
+        longestStreak = Math.Max(longestStreak, currentStreak);
+
+        return longestStreak;
+    }
+}
+
+
+public static class SequenceExtensions
+{
+    public static int Missing(this int[] sequence)
+    {
+        Array.Sort(sequence);
+        return 
+             Enumerable.Range(sequence.First(), sequence.Last()).Except(sequence).ToArray()[0];
+
+    }
+}
+//(x2-x1)*(y3-y1)-(y2-y1)*(x3-x1)
