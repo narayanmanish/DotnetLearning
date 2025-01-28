@@ -1,57 +1,34 @@
-string FormattedDivision(int num1, int num2) {
+static string FormattedDivision(int num1, int num2)
+{
+    // Step 1: Perform the division and format the result to 4 decimal places
+    double result = (double)num1 / num2;
+    string num = result.ToString("F4", CultureInfo.InvariantCulture);
 
-	double result = double(num1) / num2;
+    // Step 2: Format the integer part with commas
+    StringBuilder temp = new StringBuilder();
+    int decimalIndex = num.IndexOf('.');
 
-	// Convert the double to a string with proper output manipulation
-	stringstream convert;
-	convert << fixed << setprecision(4) << result;
-	string num = convert.str();
-	string temp;
+    // Extract the integer part and fractional part
+    string integerPart = num.Substring(0, decimalIndex);
+    string fractionalPart = num.Substring(decimalIndex);
 
-	// Check if the number needs to be formatted with commas
-	// if the whole number is in the hundreds no need to format with commas
-	// else if it is in the thousands or above format with a commas
-	for (int x = 0; x < num.length(); x++)
-	{
-		if (num[x] == '.' && x < 3) // If number was in the hundreds or lower just copy original
-		{
-			temp = num;
-			break;
-		}
-		else if (num[x] == '.' && x > 3) // Format with commas
-		{
-			int count = 0;
-			for (int y = x-1; y >= 0; y--)
-			{
-				// Checking to see the placement of every hundreds
-				// This determines when the comma will be added
-				if (count == 3) 
-				{
-					temp.push_back(',');
-					temp.push_back(num[y]);
-					count = 0;
-				}
-				else
-				{
-					temp.push_back(num[y]);
-				}
-				count++;
-			}
+    // Add commas to the integer part
+    int count = 0;
+    for (int i = integerPart.Length - 1; i >= 0; i--)
+    {
+        if (count == 3)
+        {
+            temp.Insert(0, ',');
+            count = 0;
+        }
+        temp.Insert(0, integerPart[i]);
+        count++;
+    }
 
-			// Reversing the string back, since we were working from the period to the front
-			// Also add the period
-			reverse(temp.begin(), temp.end());
-			temp.push_back(num[x]);
-		}
-		else if (temp.length() > 0)  
-		{
-			// Once the commas are formatted keep traversing the parent loop 
-			// Just inserting the remaining numbers after the period
-			temp.push_back(num[x]);
-		}
-	}
+    // Append the fractional part
+    temp.Append(fractionalPart);
 
-	return temp;
+    return temp.ToString();
 }
 
 string ArithGeoII(int arr[], int size) {
