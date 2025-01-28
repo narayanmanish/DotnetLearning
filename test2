@@ -1,0 +1,174 @@
+
+class ArrayAddition
+{
+    static bool ArrayAddition(int[] arr)
+    {
+        // Sort the array to find the largest number
+        Array.Sort(arr);
+
+        // The largest number is the target sum
+        int target = arr[^1];
+
+        // Create a subset array excluding the largest number
+        int[] subset = arr.Take(arr.Length - 1).ToArray();
+
+        // Use dynamic programming to check if any subset sums to the target
+        return CanSumToTarget(subset, target);
+    }
+
+    // Dynamic Programming approach to check if a subset sums to the target
+    static bool CanSumToTarget(int[] arr, int target)
+    {
+        // If target is 0, it means we've found a subset
+        if (target == 0) return true;
+
+        // Create a DP array to track possible sums up to the target
+        bool[] dp = new bool[target + 1];
+        dp[0] = true; // Zero sum is always achievable (empty subset)
+
+        // Traverse through the array and update the DP array
+        foreach (int num in arr)
+        {
+            // Traverse backwards to prevent using the same element multiple times
+            for (int i = target; i >= num; i--)
+            {
+                // Update dp[i] only if (i - num) is valid (i.e., >= 0)
+                if (i - num >= 0)
+                {
+                    dp[i] = dp[i] || dp[i - num];
+                }
+            }
+        }
+
+        // The target sum can be formed if dp[target] is true
+        return dp[target];
+    }
+
+    static void Main(string[] args)
+    {
+        // Example inputs
+        int[] arr1 = { 4, 6, 23, 10, 1, 3 }; // Expected: true
+        int[] arr2 = { 5, 7, 16, 1, 2 };    // Expected: false
+        int[] arr3 = { 3, 5, -1, 8, 12 };   // Expected: true
+
+        // Output results
+        Console.WriteLine(ArrayAddition(arr1)); // Output: true
+        Console.WriteLine(ArrayAddition(arr2)); // Output: false
+        Console.WriteLine(ArrayAddition(arr3)); // Output: true
+    }
+}
+class BinaryConverter
+{
+    static int BinaryConverter(string binary)
+    {
+        // Convert the binary string to a decimal number
+        int decimalValue = 0;
+
+        // Iterate through the binary string from left to right
+        for (int i = 0; i < binary.Length; i++)
+        {
+            // Get the current bit as an integer (0 or 1)
+            int bit = binary[i] - '0';
+
+            // Calculate its positional value and add it to the total
+            decimalValue = decimalValue * 2 + bit;
+        }
+
+        return decimalValue;
+    }
+
+    static void Main(string[] args)
+    {
+        // Example inputs
+        string binary1 = "101";
+        string binary2 = "111";
+        string binary3 = "1001";
+
+        // Output results
+        Console.WriteLine(BinaryConverter(binary1)); // Output: 5
+        Console.WriteLine(BinaryConverter(binary2)); // Output: 7
+        Console.WriteLine(BinaryConverter(binary3)); // Output: 9
+    }
+}
+
+class CountingMinutes
+{
+    static int CountingMinutes(string input)
+    {
+        // Split the input into the two times
+        string[] times = input.Split('-');
+        string time1 = times[0];
+        string time2 = times[1];
+
+        // Convert times to total minutes since midnight
+        int minutes1 = ConvertToMinutes(time1);
+        int minutes2 = ConvertToMinutes(time2);
+
+        // Calculate the difference in minutes
+        int difference = minutes2 - minutes1;
+
+        // If the difference is negative, it means time2 is on the next day
+        if (difference < 0)
+        {
+            difference += 24 * 60; // Add 24 hours worth of minutes
+        }
+
+        return difference;
+    }
+
+    static int ConvertToMinutes(string time)
+    {
+        // Split the time into hours, minutes, and AM/PM
+        int hours = int.Parse(time.Substring(0, time.IndexOf(':')));
+        int minutes = int.Parse(time.Substring(time.IndexOf(':') + 1, 2));
+        string meridian = time.Substring(time.Length - 2);
+
+        // Convert to 24-hour format
+        if (meridian == "PM" && hours != 12)
+        {
+            hours += 12;
+        }
+        else if (meridian == "AM" && hours == 12)
+        {
+            hours = 0;
+        }
+
+        // Return the total minutes since midnight
+        return hours * 60 + minutes;
+    }
+
+    static void Main(string[] args)
+    {
+        // Example inputs
+        string input1 = "12:30PM-12:00AM";
+        string input2 = "1:00AM-3:00AM";
+
+        // Output results
+        Console.WriteLine(CountingMinutes(input1)); // Output: 690
+        Console.WriteLine(CountingMinutes(input2)); // Output: 120
+    }
+}
+
+//triple-double
+static int TripleDouble(long num1, long num2)
+    {
+        // Convert the numbers to strings for easier processing
+        string str1 = num1.ToString();
+        string str2 = num2.ToString();
+
+        // Loop through digits 0-9
+        for (int digit = 0; digit <= 9; digit++)
+        {
+            string triple = new string((char)(digit + '0'), 3); // e.g., "111", "222", ...
+            string doubleDigit = new string((char)(digit + '0'), 2); // e.g., "11", "22", ...
+
+            // Check if the triple exists in the first number and the double exists in the second
+            if (str1.Contains(triple) && str2.Contains(doubleDigit))
+            {
+                return 1;
+            }
+        }
+
+        // If no triple-double pair is found
+        return 0;
+    }
