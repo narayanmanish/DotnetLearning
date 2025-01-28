@@ -1,4 +1,38 @@
+string ArithGeoII(int arr[], int size) {
 
+	int pattern, pattern2;
+	
+	// Find the pattern
+	pattern = arr[1]- arr[0];
+	pattern2 = arr[1] / arr[0];
+
+	bool arith = true, geo = true;
+	// Check to see if the pattern stays true when we traverse the array
+	for (int y = 0; y < size - 1; y++)
+	{
+		if (arr[y + 1] - arr[y] != pattern)
+		{
+			arith = false;
+		}
+		if (arr[y + 1] / arr[y] != pattern2)
+		{
+			geo = false;
+		}
+	}
+
+	if (arith)
+	{
+		return "Arithmetic";
+	}
+	else if (geo)
+	{
+		return "Geometric";
+	}
+	else
+	{
+		return "-1";
+	}
+}
 class ArrayAddition
 {
     static bool ArrayAddition(int[] arr)
