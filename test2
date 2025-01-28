@@ -1,3 +1,22 @@
+string FibonacciChecker(int x, int y,int num) {
+	if (num == 0 || num == 1) // If the number is 1 or 0 
+	{
+		return "yes";
+	}
+	else if (x + y == num) // When number is part of the sequence
+	{
+		return "yes";
+	}
+	else if (x + y < num) // While still less than the target, continue through the sequence
+	{
+		return FibonacciChecker(x + y, x, num);
+	}
+	else
+	{
+		return "no";
+	}
+}
+
 static string FormattedDivision(int num1, int num2)
 {
     // Step 1: Perform the division and format the result to 4 decimal places
