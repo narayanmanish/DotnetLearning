@@ -1,3 +1,38 @@
+int BracketMatcher(string str) {
+
+	int count = 0; // Used to keep count of opening brackets
+
+	for (int x = 0; x < str.length(); x++)
+	{
+		if (str[x] == '(') // Keep track of opening brackets
+		{
+			count++;
+		}
+		// If we find a closing bracket signify a match by decreasing the count
+		// The important rule is that for a closing tag to exist an opening tag must be found first
+		// If the rule is broken output 0
+		else if (str[x] == ')') 
+		{
+			count--;
+			if (count < 0)
+			{
+				return 0;
+			}
+		}
+	}
+
+	// Condition to assure that all the tags were closed
+	if (count == 0)
+	{
+		return 1;
+	}
+	else
+	{
+		return 0;
+	}
+}
+
+
 string FibonacciChecker(int x, int y,int num) {
 	if (num == 0 || num == 1) // If the number is 1 or 0 
 	{
