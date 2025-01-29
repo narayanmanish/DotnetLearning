@@ -57,6 +57,9 @@ string FibonacciChecker(int x, int y,int num) {
 
 static string FormattedDivision(int num1, int num2)
 {
+
+//using System.Globalization;
+//using System.Text;
     // Step 1: Perform the division and format the result to 4 decimal places
     double result = (double)num1 / num2;
     string num = result.ToString("F4", CultureInfo.InvariantCulture);
