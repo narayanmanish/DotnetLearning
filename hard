@@ -1,3 +1,30 @@
+static int ApproachingFibonacci(int[] arr)
+    {
+        Array.Sort(arr);
+        int n = arr.Length, minChanges = int.MaxValue;
+
+        for (int i = 0; i < n; i++)
+        {
+            for (int j = i + 1; j < n; j++)
+            {
+                int a = arr[i], b = arr[j], changes = 0;
+                int[] fibArr = new int[n];
+                fibArr[0] = a;
+                fibArr[1] = b;
+                
+                for (int k = 2; k < n; k++)
+                {
+                    fibArr[k] = fibArr[k - 1] + fibArr[k - 2];
+                }
+                
+                changes = arr.Where((val, idx) => val != fibArr[idx]).Count();
+                minChanges = Math.Min(minChanges, changes);
+            }
+        }
+        return minChanges;
+    }
+
+
 static string WildcardCharacters(string str)
     {
         string[] parts = str.Split(' ');
