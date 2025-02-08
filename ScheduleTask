@@ -1,6 +1,132 @@
 using System;
 using System.Diagnostics;
 using System.Security.Principal;
+using System.Runtime.InteropServices;
+using System.Threading;
+
+class Program
+{
+    static void Main()
+    {
+        if (!IsAdministrator())
+        {
+            RestartAsAdmin();
+            return;
+        }
+
+        PreventTermination(); // Protects the process from being killed
+
+        StartSelfWatcher(); // Automatically restarts if killed
+
+        ScheduleTask();
+        RunMainTask();
+    }
+
+    static bool IsAdministrator()
+    {
+        using (WindowsIdentity identity = WindowsIdentity.GetCurrent())
+        {
+            WindowsPrincipal principal = new WindowsPrincipal(identity);
+            return principal.IsInRole(WindowsBuiltInRole.Administrator);
+        }
+    }
+
+    static void RestartAsAdmin()
+    {
+        Process.Start(new ProcessStartInfo
+        {
+            FileName = Process.GetCurrentProcess().MainModule.FileName,
+            Verb = "runas",
+            UseShellExecute = true
+        });
+    }
+
+    static void ScheduleTask()
+    {
+        string taskName = "MyExeScheduler";
+        string exePath = $"\"{Process.GetCurrentProcess().MainModule.FileName}\"";
+
+        try
+        {
+            Process process = new Process();
+            process.StartInfo.FileName = "cmd.exe";
+            process.StartInfo.Arguments = $"/C schtasks /Query /TN \"{taskName}\"";
+            process.StartInfo.RedirectStandardOutput = true;
+            process.StartInfo.UseShellExecute = false;
+            process.StartInfo.CreateNoWindow = true;
+            process.Start();
+            string output = process.StandardOutput.ReadToEnd();
+            process.WaitForExit();
+
+            if (output.Contains(taskName))
+            {
+                Process.Start("schtasks", $"/Change /TN \"{taskName}\" /TR {exePath} /F");
+            }
+            else
+            {
+                Process.Start("schtasks", $"/Create /SC DAILY /MO 1 /TN \"{taskName}\" /TR {exePath} /ST 08:00 /RU SYSTEM /F");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error: {ex.Message}");
+        }
+    }
+
+    static void RunMainTask()
+    {
+        Console.WriteLine("Running main application logic...");
+        while (true) // Keep running indefinitely
+        {
+            Thread.Sleep(1000);
+        }
+    }
+
+    // 1️⃣ Prevent the process from being terminated
+    static void PreventTermination()
+    {
+        try
+        {
+            Process.EnterDebugMode(); // Prevents the process from being killed via Task Manager
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to enter debug mode: {ex.Message}");
+        }
+    }
+
+    // 2️⃣ Restart the process if it is killed
+    static void StartSelfWatcher()
+    {
+        Thread watcherThread = new Thread(() =>
+        {
+            while (true)
+            {
+                Process[] processes = Process.GetProcessesByName(Process.GetCurrentProcess().ProcessName);
+                if (processes.Length <= 1) // If the process is not found, restart it
+                {
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = Process.GetCurrentProcess().MainModule.FileName,
+                        Verb = "runas",
+                        UseShellExecute = true
+                    });
+                }
+                Thread.Sleep(5000);
+            }
+        });
+
+        watcherThread.IsBackground = true;
+        watcherThread.Start();
+    }
+}
+
+
+
+
+using System;
+using System.Diagnostics;
+using System.Security.Principal;
 
 class Program
 {
