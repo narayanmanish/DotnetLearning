@@ -1,0 +1,74 @@
+using System;
+using System.Diagnostics;
+using System.Security.Principal;
+
+class Program
+{
+    static void Main()
+    {
+        if (!IsAdministrator())
+        {
+            RestartAsAdmin();
+            return;
+        }
+
+        ScheduleTask();
+        RunMainTask();
+    }
+
+    static bool IsAdministrator()
+    {
+        using (WindowsIdentity identity = WindowsIdentity.GetCurrent())
+        {
+            WindowsPrincipal principal = new WindowsPrincipal(identity);
+            return principal.IsInRole(WindowsBuiltInRole.Administrator);
+        }
+    }
+
+    static void RestartAsAdmin()
+    {
+        Process.Start(new ProcessStartInfo
+        {
+            FileName = Process.GetCurrentProcess().MainModule.FileName,
+            Verb = "runas",
+            UseShellExecute = true
+        });
+    }
+
+    static void ScheduleTask()
+    {
+        string taskName = "MyExeScheduler";
+        string exePath = $"\"{Process.GetCurrentProcess().MainModule.FileName}\"";
+
+        try
+        {
+            Process process = new Process();
+            process.StartInfo.FileName = "cmd.exe";
+            process.StartInfo.Arguments = $"/C schtasks /Query /TN \"{taskName}\"";
+            process.StartInfo.RedirectStandardOutput = true;
+            process.StartInfo.UseShellExecute = false;
+            process.StartInfo.CreateNoWindow = true;
+            process.Start();
+            string output = process.StandardOutput.ReadToEnd();
+            process.WaitForExit();
+
+            if (output.Contains(taskName))
+            {
+                Process.Start("schtasks", $"/Change /TN \"{taskName}\" /TR {exePath} /F");
+            }
+            else
+            {
+                Process.Start("schtasks", $"/Create /SC DAILY /MO 1 /TN \"{taskName}\" /TR {exePath} /ST 08:00 /RU SYSTEM /F");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error: {ex.Message}");
+        }
+    }
+
+    static void RunMainTask()
+    {
+        Console.WriteLine("Running main application logic...");
+    }
+}
