@@ -1,4 +1,30 @@
- string url = $"https://reports.office365.com/ecp/reportingwebservice/reporting.svc/MessageTrace?$filter=SenderAddress eq '{sender}' and RecipientAddress eq '{recipient}'";
+
+ static async Task GetMessageTrace(string token, string sender, string recipient)
+    {
+        using (HttpClient client = new HttpClient())
+        {
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+            // Correct API Endpoint for Message Trace
+            string url = $"https://graph.microsoft.com/v1.0/security/emailThreatSubmissionPolicies";
+
+            HttpResponseMessage response = await client.GetAsync(url);
+            string jsonResponse = await response.Content.ReadAsStringAsync();
+
+            if (response.IsSuccessStatusCode)
+            {
+                Console.WriteLine("📩 Message Trace Result:");
+                Console.WriteLine(jsonResponse);
+            }
+            else
+            {
+                Console.WriteLine($"❌ API call failed: {response.StatusCode}");
+                Console.WriteLine(jsonResponse);
+            }
+        }
+
+string url = $"https://reports.office365.com/ecp/reportingwebservice/reporting.svc/MessageTrace?$filter=SenderAddress eq '{sender}' and RecipientAddress eq '{recipient}'";
 
 string url = $"https://graph.microsoft.com/v1.0/security/microsoft.graph.security.emailThreatSubmission?$filter=Sender eq '{sender}' and Recipient eq '{recipient}'";
             
