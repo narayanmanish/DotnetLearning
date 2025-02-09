@@ -1,3 +1,6 @@
+
+string url = $"https://graph.microsoft.com/v1.0/security/microsoft.graph.security.emailThreatSubmission?$filter=Sender eq '{sender}' and Recipient eq '{recipient}'";
+            
 using System;
 using System.Net.Http;
 using System.Net.Http.Headers;
