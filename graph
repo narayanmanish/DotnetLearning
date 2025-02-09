@@ -1,3 +1,4 @@
+ string url = $"https://reports.office365.com/ecp/reportingwebservice/reporting.svc/MessageTrace?$filter=SenderAddress eq '{sender}' and RecipientAddress eq '{recipient}'";
 
 string url = $"https://graph.microsoft.com/v1.0/security/microsoft.graph.security.emailThreatSubmission?$filter=Sender eq '{sender}' and Recipient eq '{recipient}'";
             
