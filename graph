@@ -1,0 +1,55 @@
+using System;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Threading.Tasks;
+
+class Program
+{
+    static async Task Main()
+    {
+        string tenantId = "YOUR_TENANT_ID";
+        string clientId = "YOUR_CLIENT_ID";
+        string clientSecret = "YOUR_CLIENT_SECRET";
+
+        string token = await GetAccessToken(tenantId, clientId, clientSecret);
+
+        if (!string.IsNullOrEmpty(token))
+        {
+            await GetMessageTrace(token, "your@domain.com", "recipient@domain.com");
+        }
+    }
+
+    static async Task<string> GetAccessToken(string tenantId, string clientId, string clientSecret)
+    {
+        using (HttpClient client = new HttpClient())
+        {
+            var body = new FormUrlEncodedContent(new[]
+            {
+                new KeyValuePair<string, string>("client_id", clientId),
+                new KeyValuePair<string, string>("client_secret", clientSecret),
+                new KeyValuePair<string, string>("scope", "https://manage.office.com/.default"),
+                new KeyValuePair<string, string>("grant_type", "client_credentials")
+            });
+
+            HttpResponseMessage response = await client.PostAsync($"https://login.microsoftonline.com/{tenantId}/oauth2/v2.0/token", body);
+            var result = await response.Content.ReadAsAsync<dynamic>();
+
+            return result.access_token;
+        }
+    }
+
+    static async Task GetMessageTrace(string token, string sender, string recipient)
+    {
+        using (HttpClient client = new HttpClient())
+        {
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+            string url = $"https://reports.office365.com/ecp/reportingwebservice/reporting.svc/MessageTrace?$filter=SenderAddress eq '{sender}' and RecipientAddress eq '{recipient}'";
+            HttpResponseMessage response = await client.GetAsync(url);
+            string jsonResponse = await response.Content.ReadAsStringAsync();
+
+            Console.WriteLine($"Message Trace Result: {jsonResponse}");
+        }
+    }
+}
