@@ -1,159 +1,81 @@
-
-
 using System;
-using System.Collections.Generic;
-using System.DirectoryServices;
+using System.Threading;
+using System.Threading.Tasks;
 
-namespace ADUsers
+class Program
 {
-    class Program
-    {
-        static void Main(string[] args)
-        {
-            string domainPath = "LDAP://YourDomain"; // Replace with your domain
-            List<string> allUsers = GetAllUsers(domainPath);
+    static Timer _timer;
+    static bool _isTimerRunning = false;
+    static bool _shouldStop = false;
 
-            foreach (var user in allUsers)
-            {
-                Console.WriteLine(user);
-            }
+    static async Task Main()
+    {
+        Console.WriteLine("⏳ Program started...");
+
+        // Start Timer (Runs every 10 minutes)
+        _timer = new Timer(async _ => await TimerFunction(), null, TimeSpan.Zero, TimeSpan.FromMinutes(10));
+
+        // Run Main Function Without Blocking
+        await RunMainFunction();
+
+        Console.ReadLine(); // Keep application running
+    }
+
+    // 🔹 Main Function (Handles Database Operations Without Blocking)
+    static async Task RunMainFunction()
+    {
+        Console.WriteLine($"💼 Main Function started at: {DateTime.Now}");
+
+        // Simulate Database Work
+        //await Task.Delay(5000); // Simulate DB Query (Replace this with actual database logic)
+        Console.WriteLine("📊 Fetching data from database...");
+
+        // Simulate API Call
+        await Task.Delay(5000); // Simulate API Response
+        Console.WriteLine("🌐 Fetching data from API...");
+
+        Console.WriteLine($"💼 Main Function finished at: {DateTime.Now}");
+    }
+
+    // ⏳ Timer Function (Runs Every 10 Minutes)
+    static async Task TimerFunction()
+    {
+        if (_isTimerRunning)
+        {
+            Console.WriteLine("⚠️ Timer function is already running. Skipping execution.");
+            return;
         }
 
-        static List<string> GetAllUsers(string domainPath)
+        _isTimerRunning = true;
+        Console.WriteLine($"✅ Timer function executed at: {DateTime.Now}");
+
+        try
         {
-            List<string> users = new List<string>();
+            // Simulate Work
+            await Task.Delay(5000);
 
-            DirectoryEntry entry = new DirectoryEntry(domainPath);
-            DirectorySearcher searcher = new DirectorySearcher(entry)
+            bool result = CheckCondition();
+            if (!result)
             {
-                Filter = "(&(objectCategory=person)(objectClass=user))",
-                PageSize = 1000, // Enable paging
-                PropertiesToLoad = { "sAMAccountName" }
-            };
-
-            SearchResultCollection results;
-            searcher.SearchScope = SearchScope.Subtree;
-
-            try
-            {
-                do
-                {
-                    results = searcher.FindAll();
-                    foreach (SearchResult result in results)
-                    {
-                        DirectoryEntry user = result.GetDirectoryEntry();
-                        if (user.Properties["sAMAccountName"].Value != null)
-                        {
-                            users.Add(user.Properties["sAMAccountName"].Value.ToString());
-                        }
-                    }
-
-                    // Update the cookie for the next page
-                    if (results.Count > 0)
-                    {
-                        foreach (byte[] cookie in results.GetCookie())
-                        {
-                            searcher.Cookie = cookie;
-                        }
-                    }
-                } while (results.Count > 0 && searcher.Cookie.Length > 0);
+                Console.WriteLine("❌ Condition failed. Stopping execution.");
+                _shouldStop = true;
+                _timer?.Dispose(); // Stop Timer
+                Environment.Exit(0); // Exit Program
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"An error occurred: {ex.Message}");
-            }
-
-            return users;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Error: {ex.Message}");
+        }
+        finally
+        {
+            _isTimerRunning = false;
         }
     }
 
-    public static class SearchResultCollectionExtensions
+    // 🔎 Condition Check Function
+    static bool CheckCondition()
     {
-        public static List<byte[]> GetCookie(this SearchResultCollection results)
-        {
-            List<byte[]> cookies = new List<byte[]>();
-
-            foreach (SearchResult result in results)
-            {
-                if (result.Properties.Contains("cookie"))
-                {
-                    foreach (object cookie in result.Properties["cookie"])
-                    {
-                        cookies.Add((byte[])cookie);
-                    }
-                }
-            }
-
-            return cookies;
-        }
-    }
-}
-
-
-
-using System;
-using System.Collections.Generic;
-using System.DirectoryServices;
-
-namespace ADUsers
-{
-    class Program
-    {
-        static void Main(string[] args)
-        {
-            string domainPath = "LDAP://YourDomain"; // Replace with your domain
-            List<string> allUsers = GetAllUsers(domainPath);
-
-            foreach (var user in allUsers)
-            {
-                Console.WriteLine(user);
-            }
-        }
-
-        static List<string> GetAllUsers(string domainPath)
-        {
-            List<string> users = new List<string>();
-
-            DirectoryEntry entry = new DirectoryEntry(domainPath);
-            DirectorySearcher searcher = new DirectorySearcher(entry)
-            {
-                Filter = "(&(objectCategory=person)(objectClass=user))",
-                PageSize = 1000,
-                PropertiesToLoad = { "sAMAccountName" }
-            };
-
-            try
-            {
-                SearchResultCollection results;
-                searcher.PropertiesToLoad.Add("sAMAccountName");
-
-                do
-                {
-                    results = searcher.FindAll();
-
-                    foreach (SearchResult result in results)
-                    {
-                        DirectoryEntry user = result.GetDirectoryEntry();
-                        if (user.Properties["sAMAccountName"].Value != null)
-                        {
-                            users.Add(user.Properties["sAMAccountName"].Value.ToString());
-                        }
-                    }
-
-                    // Get the cookie and set it for the next page
-                    byte[] pageCookie = searcher.PageSize > 0 ? searcher.GetCurrentPageCookie() : null;
-                    if (pageCookie != null)
-                    {
-                        searcher.SetCurrentPageCookie(pageCookie);
-                    }
-                } while (results.Count > 0);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"An error occurred: {ex.Message}");
-            }
-
-            return users;
-        }
+        return true; // Change to `false` if you want to stop execution
     }
 }
