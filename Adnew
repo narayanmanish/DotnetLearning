@@ -1,4 +1,98 @@
+using System;
+using System.Threading;
+using System.Threading.Tasks;
 
+class Program
+{
+    static Timer _timer;
+    static readonly SemaphoreSlim _semaphore = new(1, 1); // Ensures only one execution at a time
+    static readonly SemaphoreSlim _mainFunctionSemaphore = new(1, 1); // Prevent multiple instances of RunMainFunction
+
+    static async Task Main()
+    {
+        Console.WriteLine("⏳ Program started...");
+
+        // Start Timer (Runs every 10 minutes)
+        _timer = new Timer(async _ => await TimerCallback(), null, TimeSpan.Zero, TimeSpan.FromMinutes(10));
+
+        // Run Main Function Without Blocking
+        _ = Task.Run(RunMainFunction); // Runs in background, doesn't block main thread
+
+        Console.ReadLine(); // Keep application running
+    }
+
+    // 🔹 Main Function (Handles Database Operations Without Blocking)
+    static async Task RunMainFunction()
+    {
+        if (!_mainFunctionSemaphore.Wait(0)) // Prevent multiple instances
+        {
+            Console.WriteLine("⚠️ Main Function is already running. Skipping execution.");
+            return;
+        }
+
+        try
+        {
+            Console.WriteLine($"💼 Main Function started at: {DateTime.Now}");
+
+            // Simulate Database Work
+            Console.WriteLine("📊 Fetching data from database...");
+
+            // Simulate API Call
+            await Task.Delay(5000); // Simulate API Response
+            Console.WriteLine("🌐 Fetching data from API...");
+
+            Console.WriteLine($"💼 Main Function finished at: {DateTime.Now}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Error in Main Function: {ex.Message}");
+        }
+        finally
+        {
+            _mainFunctionSemaphore.Release();
+        }
+    }
+
+    // ⏳ Timer Callback Function (Runs Every 10 Minutes)
+    static async Task TimerCallback()
+    {
+        if (!_semaphore.Wait(0)) // Prevent concurrent execution
+        {
+            Console.WriteLine("⚠️ Timer function is already running. Skipping execution.");
+            return;
+        }
+
+        try
+        {
+            Console.WriteLine($"✅ Timer function executed at: {DateTime.Now}");
+
+            // Simulate Work
+            await Task.Delay(5000);
+
+            bool result = CheckCondition();
+            if (!result)
+            {
+                Console.WriteLine("❌ Condition failed. Stopping execution.");
+                _timer?.Dispose(); // Stop Timer
+                Environment.Exit(0); // Exit Program
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Error: {ex.Message}");
+        }
+        finally
+        {
+            _semaphore.Release(); // Allow next execution
+        }
+    }
+
+    // 🔎 Condition Check Function
+    static bool CheckCondition()
+    {
+        return true; // Change to false if you want to stop execution
+    }
+}
 
 using System;
 using System.Threading;
