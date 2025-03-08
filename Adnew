@@ -1,3 +1,10 @@
+// Manually toggle the radio button state
+    BOOL isChecked = m_RadioButton.GetCheck();
+    m_RadioButton.SetCheck(!isChecked);  // Toggle state
+
+    // Remove radio button from any default group behavior
+    m_RadioButton.SendMessage(BM_SETSTYLE, BS_AUTORADIOBUTTON | BS_PUSHLIKE, TRUE);
+
 using System;
 using System.Threading;
 using System.Threading.Tasks;
