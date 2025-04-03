@@ -1,4 +1,82 @@
-// Manually toggle the radio button state
+using System;
+using System.DirectoryServices;
+
+class Program
+{
+    static void Main()
+    {
+        string domainName = "yourdomain.com";  // Change this
+        string username = "admin@yourdomain.com"; // Change this
+        string password = "YourPassword"; // Change this
+
+        try
+        {
+            Console.WriteLine($"Connecting to AD: {domainName}...");
+            DirectoryEntry rootEntry = new DirectoryEntry($"LDAP://{domainName}", username, password);
+
+            Console.WriteLine("Forest/Root Domain: " + domainName);
+
+            // Get all domains & subdomains
+            PrintSubDomains(rootEntry, "│   ");
+
+            // Get trusted domains
+            PrintTrustedDomains(domainName, username, password, "│   ");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Error: " + ex.Message);
+        }
+    }
+
+    static void PrintSubDomains(DirectoryEntry entry, string prefix)
+    {
+        try
+        {
+            DirectorySearcher searcher = new DirectorySearcher(entry)
+            {
+                Filter = "(objectClass=domainDNS)"
+            };
+
+            foreach (SearchResult result in searcher.FindAll())
+            {
+                DirectoryEntry subDomainEntry = result.GetDirectoryEntry();
+                string subDomainName = subDomainEntry.Properties["name"].Value.ToString();
+
+                Console.WriteLine($"{prefix}├── Subdomain: {subDomainName}");
+
+                // Recursively get subdomains of this subdomain
+                PrintSubDomains(subDomainEntry, prefix + "│   ");
+            }
+        }
+        catch { /* Ignore if no subdomains */ }
+    }
+
+    static void PrintTrustedDomains(string domainName, string username, string password, string prefix)
+    {
+        try
+        {
+            DirectoryEntry entry = new DirectoryEntry($"LDAP://{domainName}", username, password);
+            DirectorySearcher searcher = new DirectorySearcher(entry)
+            {
+                Filter = "(objectClass=trustedDomain)"
+            };
+
+            foreach (SearchResult result in searcher.FindAll())
+            {
+                DirectoryEntry trustedDomainEntry = result.GetDirectoryEntry();
+                string trustedDomainName = trustedDomainEntry.Properties["cn"].Value.ToString();
+
+                Console.WriteLine($"{prefix}├── Trusted Domain: {trustedDomainName}");
+
+                // Get subdomains of the trusted domain
+                PrintSubDomains(new DirectoryEntry($"LDAP://{trustedDomainName}", username, password), prefix + "│   ");
+            }
+        }
+        catch { /* Ignore if no trusted domains */ }
+    }
+}
+
+/ Manually toggle the radio button state
     BOOL isChecked = m_RadioButton.GetCheck();
     m_RadioButton.SetCheck(!isChecked);  // Toggle state
 
